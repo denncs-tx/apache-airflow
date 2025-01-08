@@ -165,6 +165,7 @@ class TaskInstance(BaseModel):
     try_number: int
     map_index: int = -1
     hostname: str | None = None
+    start_date: UtcDateTime
 
 
 class DagRun(BaseModel):
@@ -181,6 +182,7 @@ class DagRun(BaseModel):
     data_interval_end: UtcDateTime | None
     start_date: UtcDateTime
     end_date: UtcDateTime | None
+    clear_number: int
     run_type: DagRunType
     conf: Annotated[dict[str, Any], Field(default_factory=dict)]
 
@@ -190,6 +192,9 @@ class TIRunContext(BaseModel):
 
     dag_run: DagRun
     """DAG run information for the task instance."""
+
+    task_reschedule_count: Annotated[int, Field(default=0)]
+    """How many times the task has been rescheduled."""
 
     max_tries: int
     """Maximum number of tries for the task instance (from DB)."""

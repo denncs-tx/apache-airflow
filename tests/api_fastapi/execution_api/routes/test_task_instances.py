@@ -80,6 +80,7 @@ class TestTIRunState:
             "dag_run": {
                 "dag_id": "dag",
                 "run_id": "test",
+                "clear_number": 0,
                 "logical_date": instant_str,
                 "data_interval_start": instant.subtract(days=1).to_iso8601_string(),
                 "data_interval_end": instant_str,
@@ -88,6 +89,7 @@ class TestTIRunState:
                 "run_type": "manual",
                 "conf": {},
             },
+            "task_reschedule_count": 0,
             "max_tries": 0,
             "variables": [],
             "connections": [],

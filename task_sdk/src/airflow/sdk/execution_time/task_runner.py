@@ -31,6 +31,7 @@ import attrs
 import structlog
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
 
+from airflow.listeners.listener import get_listener_manager
 from airflow.dag_processing.bundles.manager import DagBundlesManager
 from airflow.sdk.api.datamodels._generated import TaskInstance, TerminalTIState, TIRunContext
 from airflow.sdk.definitions._internal.dag_parsing_context import _airflow_parsing_context_manager
@@ -53,6 +54,7 @@ from airflow.sdk.execution_time.context import (
     VariableAccessor,
     set_current_context,
 )
+from airflow.utils.state import TaskInstanceState
 from airflow.utils.net import get_hostname
 
 if TYPE_CHECKING:
@@ -132,6 +134,7 @@ class RuntimeTaskInstance(TaskInstance):
                 "ts": ts,
                 "ts_nodash": ts_nodash,
                 "ts_nodash_with_tz": ts_nodash_with_tz,
+                "task_reschedule_count": self._ti_context_from_server.task_reschedule_count,
             }
             context.update(context_from_server)
 
@@ -458,6 +461,9 @@ def run(ti: RuntimeTaskInstance, log: Logger):
     try:
         # TODO: pre execute etc.
         # TODO: Get a real context object
+        get_listener_manager().hook.on_task_instance_running(
+            previous_state=TaskInstanceState.QUEUED, task_instance=ti
+        )
         ti.hostname = get_hostname()
         ti.task = ti.task.prepare_for_execution()
         context = ti.get_template_context()
@@ -474,6 +480,9 @@ def run(ti: RuntimeTaskInstance, log: Logger):
         #   - Pre Execute
         #   etc
         msg = TaskState(state=TerminalTIState.SUCCESS, end_date=datetime.now(tz=timezone.utc))
+        get_listener_manager().hook.on_task_instance_success(
+            previous_state=TaskInstanceState.RUNNING, task_instance=ti
+        )
     except TaskDeferred as defer:
         # TODO: Should we use structlog.bind_contextvars here for dag_id, task_id & run_id?
         log.info("Pausing task as DEFERRED. ", dag_id=ti.dag_id, task_id=ti.task_id, run_id=ti.run_id)
@@ -508,6 +517,11 @@ def run(ti: RuntimeTaskInstance, log: Logger):
             state=TerminalTIState.FAIL_WITHOUT_RETRY,
             end_date=datetime.now(tz=timezone.utc),
         )
+
+        get_listener_manager().hook.on_task_instance_failed(
+            previous_state=TaskInstanceState.RUNNING, task_instance=ti
+        )
+
         # TODO: Run task failure callbacks here
     except (AirflowTaskTimeout, AirflowException):
         # We should allow retries if the task has defined it.
@@ -515,6 +529,9 @@ def run(ti: RuntimeTaskInstance, log: Logger):
         msg = TaskState(
             state=TerminalTIState.FAILED,
             end_date=datetime.now(tz=timezone.utc),
+        )
+        get_listener_manager().hook.on_task_instance_failed(
+            previous_state=TaskInstanceState.RUNNING, task_instance=ti
         )
         # TODO: Run task failure callbacks here
     except AirflowTaskTerminated:
@@ -526,6 +543,9 @@ def run(ti: RuntimeTaskInstance, log: Logger):
             state=TerminalTIState.FAIL_WITHOUT_RETRY,
             end_date=datetime.now(tz=timezone.utc),
         )
+        get_listener_manager().hook.on_task_instance_failed(
+            previous_state=TaskInstanceState.RUNNING, task_instance=ti
+        )
         # TODO: Run task failure callbacks here
     except SystemExit:
         # SystemExit needs to be retried if they are eligible.
@@ -534,10 +554,16 @@ def run(ti: RuntimeTaskInstance, log: Logger):
             state=TerminalTIState.FAILED,
             end_date=datetime.now(tz=timezone.utc),
         )
+        get_listener_manager().hook.on_task_instance_failed(
+            previous_state=TaskInstanceState.RUNNING, task_instance=ti
+        )
         # TODO: Run task failure callbacks here
     except BaseException:
         log.exception("Task failed with exception")
         # TODO: Run task failure callbacks here
+        get_listener_manager().hook.on_task_instance_failed(
+            previous_state=TaskInstanceState.RUNNING, task_instance=ti
+        )
         msg = TaskState(state=TerminalTIState.FAILED, end_date=datetime.now(tz=timezone.utc))
     if msg:
         SUPERVISOR_COMMS.send_request(msg=msg, log=log)

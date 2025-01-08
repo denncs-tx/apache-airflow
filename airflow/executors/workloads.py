@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import os
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Union
 
@@ -56,6 +57,7 @@ class TaskInstance(BaseModel):
     run_id: str
     try_number: int
     map_index: int = -1
+    start_date: datetime
 
     pool_slots: int
     queue: str
@@ -73,6 +75,15 @@ class TaskInstance(BaseModel):
             try_number=self.try_number,
             map_index=self.map_index,
         )
+
+
+class DagRun(BaseModel):
+    id: int
+    dag_id: str
+    run_id: str
+    logical_date: datetime
+    data_interval_start: datetime
+    data_interval_end: datetime
 
 
 class ExecuteTask(BaseActivity):
@@ -95,6 +106,9 @@ class ExecuteTask(BaseActivity):
         from pathlib import Path
 
         from airflow.utils.helpers import log_filename_template_renderer
+
+        if not ti.start_date:
+            ti.start_date = datetime.now()
 
         ser_ti = TaskInstance.model_validate(ti, from_attributes=True)
         bundle_info = BundleInfo.model_construct(
