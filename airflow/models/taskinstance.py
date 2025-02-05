@@ -1001,14 +1001,18 @@ def _get_template_context(
         )
         context["expanded_ti_count"] = expanded_ti_count
         if expanded_ti_count:
-            context["_upstream_map_indexes"] = {  # type: ignore[typeddict-unknown-key]
-                upstream.task_id: task_instance.get_relevant_upstream_map_indexes(
-                    upstream,
-                    expanded_ti_count,
-                    session=session,
-                )
-                for upstream in task.upstream_list
-            }
+            setattr(
+                task_instance,
+                "_upstream_map_indexes",
+                {
+                    upstream.task_id: task_instance.get_relevant_upstream_map_indexes(
+                        upstream,
+                        expanded_ti_count,
+                        session=session,
+                    )
+                    for upstream in task.upstream_list
+                },
+            )
     except NotMapped:
         pass
 

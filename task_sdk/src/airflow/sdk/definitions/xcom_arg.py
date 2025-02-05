@@ -335,7 +335,6 @@ class PlainXComArg(XComArg):
     def resolve(self, context: Mapping[str, Any]) -> Any:
         ti = context["ti"]
         task_id = self.operator.task_id
-        # map_indexes = context.get("_upstream_map_indexes", {}).get(task_id)
 
         if self.operator.is_mapped:
             return LazyXComSequence[Any](xcom_arg=self, ti=ti)

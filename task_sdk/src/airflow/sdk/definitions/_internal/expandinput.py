@@ -191,7 +191,7 @@ class DictOfListsExpandInput(ResolveMixin):
         if map_index is None or map_index < 0:
             raise RuntimeError("can't resolve task-mapping argument without expanding")
 
-        upstream_map_indexes = context.get("_upstream_map_indexes", {})
+        upstream_map_indexes = getattr(context["ti"], "_upstream_map_indexes", {})
 
         # TODO: This initiates one API call for each XComArg. Would it be
         # more efficient to do one single call and unpack the value here?

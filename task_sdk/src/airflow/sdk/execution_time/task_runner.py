@@ -176,7 +176,7 @@ class RuntimeTaskInstance(TaskInstance):
             if from_server.upstream_map_indexes is not None:
                 # We stash this in here for later use, but we purposefully don't want to document it's
                 # existence. Should this be a private attribute on RuntimeTI instead perhaps?
-                context["_upstream_map_indexes"] = from_server.upstream_map_indexes  # type: ignore [typeddict-unknown-key]
+                setattr(self, "_upstream_map_indexes", from_server.upstream_map_indexes)
 
         return context
 
