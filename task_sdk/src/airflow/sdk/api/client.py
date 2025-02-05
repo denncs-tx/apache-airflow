@@ -271,7 +271,7 @@ class XComOperations:
         # TODO: check if we need to use map_index as params in the uri
         # ref: https://github.com/apache/airflow/blob/v2-10-stable/airflow/api_connexion/openapi/v1.yaml#L1785C1-L1785C81
         params = {}
-        if map_index is not None:
+        if map_index is not None and map_index >= 0:
             params.update({"map_index": map_index})
         try:
             resp = self.client.get(f"xcoms/{dag_id}/{run_id}/{task_id}/{key}", params=params)
@@ -301,7 +301,7 @@ class XComOperations:
         # TODO: check if we need to use map_index as params in the uri
         # ref: https://github.com/apache/airflow/blob/v2-10-stable/airflow/api_connexion/openapi/v1.yaml#L1785C1-L1785C81
         params = {}
-        if map_index is not None:
+        if map_index is not None and map_index >= 0:
             params = {"map_index": map_index}
         self.client.post(f"xcoms/{dag_id}/{run_id}/{task_id}/{key}", params=params, json=value)
         # Any error from the server will anyway be propagated down to the supervisor,

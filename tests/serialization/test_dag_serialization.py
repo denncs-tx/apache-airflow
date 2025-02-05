@@ -2456,7 +2456,8 @@ def test_operator_expand_serde():
 
 
 def test_operator_expand_xcomarg_serde():
-    from airflow.models.xcom_arg import PlainXComArg, XComArg
+    from airflow.models.xcom_arg import SchedulerPlainXComArg
+    from airflow.sdk.definitions.xcom_arg import XComArg
     from airflow.serialization.serialized_objects import _XComRef
 
     with DAG("test-dag", schedule=None, start_date=datetime(2020, 1, 1)) as dag:
@@ -2505,13 +2506,13 @@ def test_operator_expand_xcomarg_serde():
     serialized_dag: DAG = SerializedDAG.from_dict(SerializedDAG.to_dict(dag))
 
     xcom_arg = serialized_dag.task_dict["task_2"].expand_input.value["arg2"]
-    assert isinstance(xcom_arg, PlainXComArg)
+    assert isinstance(xcom_arg, SchedulerPlainXComArg)
     assert xcom_arg.operator is serialized_dag.task_dict["op1"]
 
 
 @pytest.mark.parametrize("strict", [True, False])
 def test_operator_expand_kwargs_literal_serde(strict):
-    from airflow.models.xcom_arg import PlainXComArg, XComArg
+    from airflow.sdk.definitions.xcom_arg import XComArg
     from airflow.serialization.serialized_objects import _XComRef
 
     with DAG("test-dag", schedule=None, start_date=datetime(2020, 1, 1)) as dag:
@@ -2571,15 +2572,16 @@ def test_operator_expand_kwargs_literal_serde(strict):
     serialized_dag: DAG = SerializedDAG.from_dict(SerializedDAG.to_dict(dag))
 
     resolved_expand_value = serialized_dag.task_dict["task_2"].expand_input.value
-    resolved_expand_value == [
+    assert resolved_expand_value == [
         {"a": "x"},
-        {"a": PlainXComArg(serialized_dag.task_dict["op1"])},
+        {"a": _XComRef({"task_id": "op1", "key": "return_value"})},
     ]
 
 
 @pytest.mark.parametrize("strict", [True, False])
 def test_operator_expand_kwargs_xcomarg_serde(strict):
-    from airflow.models.xcom_arg import PlainXComArg, XComArg
+    from airflow.models.xcom_arg import SchedulerPlainXComArg
+    from airflow.sdk.definitions.xcom_arg import XComArg
     from airflow.serialization.serialized_objects import _XComRef
 
     with DAG("test-dag", schedule=None, start_date=datetime(2020, 1, 1)) as dag:
@@ -2624,7 +2626,7 @@ def test_operator_expand_kwargs_xcomarg_serde(strict):
     serialized_dag: DAG = SerializedDAG.from_dict(SerializedDAG.to_dict(dag))
 
     xcom_arg = serialized_dag.task_dict["task_2"].expand_input.value
-    assert isinstance(xcom_arg, PlainXComArg)
+    assert isinstance(xcom_arg, SchedulerPlainXComArg)
     assert xcom_arg.operator is serialized_dag.task_dict["op1"]
 
 
@@ -2905,7 +2907,7 @@ def test_taskflow_expand_kwargs_serde(strict):
 
 def test_mapped_task_group_serde():
     from airflow.decorators.task_group import task_group
-    from airflow.models.expandinput import DictOfListsExpandInput
+    from airflow.models.expandinput import SchedulerDictOfListsExpandInput
     from airflow.sdk.definitions.taskgroup import MappedTaskGroup
 
     with DAG("test-dag", schedule=None, start_date=datetime(2020, 1, 1)) as dag:
@@ -2948,7 +2950,7 @@ def test_mapped_task_group_serde():
     serde_dag = SerializedDAG.deserialize_dag(ser_dag[Encoding.VAR])
     serde_tg = serde_dag.task_group.children["tg"]
     assert isinstance(serde_tg, MappedTaskGroup)
-    assert serde_tg._expand_input == DictOfListsExpandInput({"a": [".", ".."]})
+    assert serde_tg._expand_input == SchedulerDictOfListsExpandInput({"a": [".", ".."]})
 
 
 @pytest.mark.db_test
