@@ -1792,7 +1792,7 @@ class TaskGroupSerialization(BaseSerialization):
         if isinstance(task_group, MappedTaskGroup):
             expand_input = task_group._expand_input
             encoded["expand_input"] = {
-                "type": type(expand_input).EXPAND_INPUT_TYPE,
+                "type": expand_input.EXPAND_INPUT_TYPE,
                 "value": cls.serialize(expand_input.value),
             }
             encoded["is_mapped"] = True
